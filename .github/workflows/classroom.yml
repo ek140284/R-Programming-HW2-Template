@@ -1,0 +1,168 @@
+name: Autograding Tests
+
+on:
+  - push
+  - workflow_dispatch
+
+permissions:
+  checks: write
+  actions: read
+  contents: read
+
+jobs:
+  run-autograding-tests:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+
+      # Q1 df3
+      - name: Q1 df3
+        id: q1
+        continue-on-error: true
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Q1 df3
+          command: >
+            Rscript -e "source('HW2.R'); 
+            if (!exists('df3') || !is.data.frame(df3) || nrow(df3)!=10 ||
+            !all(c('id','name','gender','age','score','department','salary') %in% names(df3)))
+            quit(status=1)"
+          max-score: 1
+
+      # Q1 型
+      - name: Q1 type
+        id: q1type
+        continue-on-error: true
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Q1 type
+          command: >
+            Rscript -e "source('HW2.R'); 
+            if (!(is.integer(df3[['id']]) &&
+                  is.character(df3[['name']]) &&
+                  is.character(df3[['gender']]) &&
+                  is.numeric(df3[['age']]) &&
+                  is.numeric(df3[['score']]) &&
+                  is.character(df3[['department']]) &&
+                  is.numeric(df3[['salary']])
+            )) quit(status=1)"
+          max-score: 1
+
+      # Q2 salary_new
+      - name: Q2 salary_new
+        id: q2
+        continue-on-error: true
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Q2 salary_new
+          command: >
+            Rscript -e "source('HW2.R'); 
+            if (!('salary_new' %in% names(df3)) ||
+            !is.numeric(df3[['salary_new']]) ||
+            !isTRUE(all.equal(df3[['salary_new']], df3[['salary']] * 1.1)))
+            quit(status=1)"
+          max-score: 1
+
+      # Q3 high_score
+      - name: Q3 high_score
+        id: q3
+        continue-on-error: true
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Q3 high_score
+          command: >
+            Rscript -e "source('HW2.R'); 
+            if (!('high_score' %in% names(df3)) ||
+            !all(df3[['high_score']] %in% c(0,1)) ||
+            !all(df3[['high_score']] == ifelse(df3[['score']]>=80,1,0)))
+            quit(status=1)"
+          max-score: 1
+
+      # Q4 df_high
+      - name: Q4 df_high
+        id: q4
+        continue-on-error: true
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Q4 df_high
+          command: >
+            Rscript -e "source('HW2.R'); 
+            if (!exists('df_high') ||
+            !is.data.frame(df_high) ||
+            nrow(df_high)==0 ||
+            !all(df_high[['score']]>=80))
+            quit(status=1)"
+          max-score: 1
+
+      # Q5 df_dev
+      - name: Q5 df_dev
+        id: q5
+        continue-on-error: true
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Q5 df_dev
+          command: >
+            Rscript -e "source('HW2.R'); 
+            if (!exists('df_dev') ||
+            !is.data.frame(df_dev) ||
+            nrow(df_dev)==0 ||
+            !all(enc2utf8(df_dev[['department']])==enc2utf8('開発')))
+            quit(status=1)"
+          max-score: 1
+
+      # Q6 mean_score
+      - name: Q6 mean_score
+        id: q6
+        continue-on-error: true
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Q6 mean_score
+          command: >
+            Rscript -e "source('HW2.R'); 
+            if (!exists('mean_score') ||
+            !is.numeric(mean_score) ||
+            abs(mean_score - mean(df3[['score']])) > 1e-6)
+            quit(status=1)"
+          max-score: 1
+
+      # Q7 salary_final
+      - name: Q7 salary_final
+        id: q7
+        continue-on-error: true
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Q7 salary_final
+          command: >
+            Rscript -e "source('HW2.R'); 
+            if (!('salary_new' %in% names(df3)) ||
+                !('high_score' %in% names(df3)) ||
+                !('salary_final' %in% names(df3)))
+                quit(status=1);
+            expected <- df3[['salary_new']];
+            idx <- df3[['high_score']] == 1;
+            expected[idx] <- expected[idx] * 1.05;
+            if (!isTRUE(all.equal(df3[['salary_final']], expected)))
+                quit(status=1)"
+          max-score: 1
+
+      # Report
+      - name: Autograding Reporter
+        continue-on-error: true
+        uses: classroom-resources/autograding-grading-reporter@v1
+        env:
+          Q1_RESULTS: "${{ steps.q1.outputs.result }}"
+          Q1TYPE_RESULTS: "${{ steps.q1type.outputs.result }}"
+          Q2_RESULTS: "${{ steps.q2.outputs.result }}"
+          Q3_RESULTS: "${{ steps.q3.outputs.result }}"
+          Q4_RESULTS: "${{ steps.q4.outputs.result }}"
+          Q5_RESULTS: "${{ steps.q5.outputs.result }}"
+          Q6_RESULTS: "${{ steps.q6.outputs.result }}"
+          Q7_RESULTS: "${{ steps.q7.outputs.result }}"
+        with:
+          runners: q1,q1type,q2,q3,q4,q5,q6,q7
